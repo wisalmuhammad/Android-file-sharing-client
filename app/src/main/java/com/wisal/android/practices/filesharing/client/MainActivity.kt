@@ -12,6 +12,9 @@ import android.util.Log
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
+import androidx.activity.result.ActivityResult
+import androidx.activity.result.ActivityResultRegistry
+import androidx.activity.result.contract.ActivityResultContracts
 import com.bumptech.glide.Glide
 import java.io.FileNotFoundException
 
@@ -25,30 +28,14 @@ class MainActivity : AppCompatActivity() {
     private lateinit var requestingIntent: Intent
     private lateinit var inputPFD: ParcelFileDescriptor
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+    private val activityResult = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
 
-        selectButton = findViewById(R.id.select_view)
-        imageView = findViewById(R.id.image_view)
-        infoView = findViewById(R.id.textView)
-
-        selectButton.setOnClickListener {
-            requestingIntent = Intent(Intent.ACTION_PICK).apply {
-                type = "image/jpg"
-            }
-            startActivityForResult(requestingIntent,0)
-        }
-
-    }
-
-    override fun onActivityResult(requestCode: Int, resultCode: Int, returnIntent: Intent?) {
-        super.onActivityResult(requestCode, resultCode, returnIntent)
-        if(resultCode != Activity.RESULT_OK) {
+        if(it.resultCode != Activity.RESULT_OK) {
             Log.e(TAG,"File selection did not work")
-            return
+            return@registerForActivityResult
         }
-        returnIntent?.data?.also { uri ->
+
+        it.data?.data?.also { uri ->
             contentResolver.query(uri,
                 null,
                 null,
@@ -70,7 +57,7 @@ class MainActivity : AppCompatActivity() {
             } catch (e: FileNotFoundException) {
                 e.printStackTrace()
                 Log.e(TAG, "File not found.")
-                return
+                return@also
             }
 
             val fd = inputPFD.fileDescriptor
@@ -80,6 +67,22 @@ class MainActivity : AppCompatActivity() {
                 .load(image)
                 .centerCrop()
                 .into(imageView)
+        }
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        selectButton = findViewById(R.id.select_view)
+        imageView = findViewById(R.id.image_view)
+        infoView = findViewById(R.id.textView)
+
+        selectButton.setOnClickListener {
+            requestingIntent = Intent(Intent.ACTION_PICK).apply {
+                type = "image/jpg"
+            }
+            activityResult.launch(requestingIntent)
         }
 
     }
